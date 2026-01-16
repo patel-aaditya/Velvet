@@ -1,0 +1,7 @@
+{
+  "name": "Velvet - Hyper-Personalization Engine",
+  "description": "An orchestrated AI system that generates, verifies, and refines hyper-personalized user experiences based on personality calibration.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
