@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, ExperienceData, AgentStage, LogEntry, Blueprint, ChatMessage, DesignSystem, MemoryEvent, InteractionType } from '../types';
 import PreviewPane from './PreviewPane';
-import { createBlueprint, generateDraft, remixDraft, verifyDraft, refineDraft, simulatePersonaChat, mutateDesign, polishCopy, generateVisualAsset, generateProductAsset, detectPreferenceDrift } from '../services/geminiService';
+import { createBlueprint, generateDraft, remixDraft, verifyDraft, refineDraft, simulatePersonaChat, mutateDesign, polishCopy, generateVisualAsset, generateProductAsset, detectPreferenceDrift, generateProjectThumbnail } from '../services/geminiService';
 import { ICONS } from '../constants';
 
 interface DashboardProps {
@@ -31,6 +31,10 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile: initialProfile, onRe
 
   // Studio State
   const [isMutating, setIsMutating] = useState(false);
+  
+  // Thumbnail State
+  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   
   const logsEndRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -96,6 +100,22 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile: initialProfile, onRe
       addLog('IDLE', 'Memory Core wiped.');
     }
   };
+  
+  const handleGenerateThumbnail = async () => {
+      setIsGeneratingThumbnail(true);
+      addLog('GENERATING_ASSETS', 'Generating Press Kit / Project Thumbnail...');
+      try {
+          const url = await generateProjectThumbnail();
+          if (url) {
+             setThumbnailUrl(url);
+             addLog('COMPLETE', 'Press Kit Asset Generated.');
+          }
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setIsGeneratingThumbnail(false);
+      }
+  }
 
   useEffect(() => {
     if (logsEndRef.current) logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -335,6 +355,39 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile: initialProfile, onRe
            ) : (
              <div className="text-slate-600 text-xs italic">Waiting for blueprint...</div>
            )}
+           
+           {/* Press Kit Generator */}
+           <div className="pt-4 border-t border-slate-800">
+               <div className="flex justify-between items-center mb-2">
+                   <p className="text-[10px] text-green-400 uppercase">Press Kit</p>
+               </div>
+               {!thumbnailUrl ? (
+                   <button 
+                    onClick={handleGenerateThumbnail} 
+                    disabled={isGeneratingThumbnail}
+                    className="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs rounded text-slate-300 transition flex items-center justify-center gap-2"
+                   >
+                     {isGeneratingThumbnail ? (
+                         <div className="w-3 h-3 rounded-full border-2 border-slate-400 border-t-transparent animate-spin" />
+                     ) : (
+                         <ICONS.VelvetLogo className="w-3 h-3" />
+                     )}
+                     Generate Project Thumbnail
+                   </button>
+               ) : (
+                   <div className="space-y-2">
+                       <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-24 object-cover rounded border border-slate-700 opacity-80 hover:opacity-100 transition" />
+                       <a 
+                         href={thumbnailUrl} 
+                         download={`Velvet_Project_${userProfile.name}.png`}
+                         className="block w-full text-center py-2 bg-green-600 hover:bg-green-500 text-white text-xs rounded font-bold"
+                       >
+                           Download Asset
+                       </a>
+                       <button onClick={() => setThumbnailUrl(null)} className="text-[10px] text-slate-500 w-full text-center hover:text-white">Regenerate</button>
+                   </div>
+               )}
+           </div>
 
            {/* Explicit Memory Bank */}
            <div className="pt-4 border-t border-slate-800">
@@ -520,6 +573,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile: initialProfile, onRe
         <div className="p-6 pb-2 border-b border-slate-800 bg-slate-900">
           <div className="flex justify-between items-center mb-6">
             <h2 className="font-mono font-bold text-sm tracking-widest text-white flex items-center gap-2 uppercase">
+              <ICONS.VelvetLogo className="w-5 h-5 text-blue-500" />
               Velvet OS
             </h2>
             <div className="flex items-center gap-2">

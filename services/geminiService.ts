@@ -304,6 +304,42 @@ export const generateProductAsset = async (conceptName: string, desc: string, de
   return '';
 };
 
+export const generateProjectThumbnail = async (): Promise<string> => {
+    if (!apiKey) throw new Error("API Key missing");
+
+    const prompt = `
+      Cinematic abstract 3D composition representing "Velvet", an AI Hyper-Personalization Engine.
+      Visuals: Sleek dark slate glass surfaces, glowing blue data streams, floating UI blueprints.
+      Vibe: Industrial Design meets Futurism. Mysterious, Elegant, High-Tech.
+      Center: A subtle, stylized 'V' logo in brushed titanium or light.
+      Lighting: Volumetric, moody, rim lighting.
+      Resolution: 8k, photorealistic.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [{ text: prompt }]
+            },
+            config: {
+                imageConfig: {
+                    aspectRatio: "16:9" 
+                }
+            }
+        });
+
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+            if (part.inlineData) {
+                return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+            }
+        }
+    } catch (e) {
+        console.error("Thumbnail gen failed", e);
+    }
+    return '';
+}
+
 // 5. Paint-to-Edit / Refine Visual (Gemini 2.5 Flash Image)
 export const refineVisualAsset = async (imageBase64: string, instruction: string): Promise<string> => {
   if (!apiKey) throw new Error("API Key missing");
@@ -498,7 +534,10 @@ export const mutateDesign = async (profile: UserProfile, currentDesign: DesignSy
     const prompt = `
       Modify this Design System based on the instruction: "${instruction}"
       Current System: ${JSON.stringify(currentDesign)}
-      User Profile: ${profile.personality}
+      
+      User Profile Context: ${profile.personality}, ${profile.tone}
+      
+      Return the updated Design System JSON only.
     `;
 
     const response = await ai.models.generateContent({
@@ -511,21 +550,27 @@ export const mutateDesign = async (profile: UserProfile, currentDesign: DesignSy
     });
 
     return JSON.parse(response.text || '{}');
-}
+};
 
-export const polishCopy = async (text: string, toneInstruction: string): Promise<string> => {
+export const polishCopy = async (text: string, tone: string): Promise<string> => {
     if (!apiKey) throw new Error("API Key missing");
-    
+
     const prompt = `
-       Rewrite this specific text to match the instruction: "${toneInstruction}"
-       Text: "${text}"
-       Return ONLY the rewritten text.
+      Rewrite the following text to have a "${tone}" tone.
+      Keep the core meaning, but adjust the style.
+      
+      Original Text: "${text}"
+      
+      Return only the rewritten text.
     `;
-    
+
     const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents: prompt
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+            responseMimeType: 'text/plain'
+        }
     });
 
-    return response.text?.trim() || text;
-}
+    return response.text || text;
+};

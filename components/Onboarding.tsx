@@ -54,10 +54,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         
         <div className="mb-12 text-center">
           <h1 className="text-4xl font-serif font-bold text-white mb-2 tracking-tight flex items-center justify-center gap-3">
-             <ICONS.Sparkles className="w-8 h-8 text-blue-500" />
+             <ICONS.VelvetLogo className="w-10 h-10 text-blue-500" />
              Velvet
           </h1>
-          <p className="text-slate-400 font-mono text-xs uppercase tracking-[0.2em]">Calibration Sequence</p>
         </div>
 
         {!inferredProfile ? (
