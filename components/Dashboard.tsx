@@ -112,6 +112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile: initialProfile, onRe
           }
       } catch (e) {
           console.error(e);
+          addLog('IDLE', `Thumbnail failed: ${e instanceof Error ? e.message : String(e)}`);
       } finally {
           setIsGeneratingThumbnail(false);
       }
@@ -218,7 +219,9 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile: initialProfile, onRe
       }
 
     } catch (error) {
-      addLog('IDLE', 'Orchestration failed.');
+      // Improved Error Logging
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog('IDLE', `Orchestration failed: ${errorMessage}`);
       console.error(error);
     }
   };
@@ -253,6 +256,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile: initialProfile, onRe
       setChatHistory(prev => [...prev, { role: 'persona', text: response }]);
     } catch (err) {
       console.error(err);
+      setChatHistory(prev => [...prev, { role: 'persona', text: "Error: Could not respond." }]);
     } finally {
       setIsChatting(false);
     }

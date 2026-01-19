@@ -4,6 +4,19 @@ import { UserProfile, ExperienceData, Blueprint, VerificationResult, Personality
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
+// --- Helper: Clean JSON Parser ---
+const cleanAndParseJSON = (text: string | undefined): any => {
+  if (!text) return {};
+  try {
+    // Remove markdown code blocks if present (e.g. ```json ... ```)
+    const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("Failed to parse JSON from model output:", text);
+    throw new Error("Model response was not valid JSON.");
+  }
+};
+
 // --- Schemas ---
 
 const calibrationSchema: Schema = {
@@ -151,7 +164,7 @@ export const calibratePersona = async (bio: string, moodBoardUrl?: string): Prom
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  return cleanAndParseJSON(response.text);
 };
 
 // 2. Blueprint (Gemini 3 Pro) - Now Memory Aware
@@ -189,7 +202,7 @@ export const createBlueprint = async (profile: UserProfile, history: MemoryEvent
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  return cleanAndParseJSON(response.text);
 };
 
 // 3. Draft (Gemini 3 Pro)
@@ -228,7 +241,7 @@ export const generateDraft = async (profile: UserProfile, blueprint: Blueprint):
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  return cleanAndParseJSON(response.text);
 };
 
 // 4. Visual Assets (Gemini 2.5 Flash Image)
@@ -407,7 +420,7 @@ export const remixDraft = async (profile: UserProfile, blueprint: Blueprint, pre
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  return cleanAndParseJSON(response.text);
 };
 
 // Enhanced Vibe Verification
@@ -440,7 +453,7 @@ export const verifyDraft = async (draft: ExperienceData, profile: UserProfile): 
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  return cleanAndParseJSON(response.text);
 };
 
 export const refineDraft = async (draft: ExperienceData, critique: VerificationResult, profile: UserProfile): Promise<ExperienceData> => {
@@ -470,7 +483,7 @@ export const refineDraft = async (draft: ExperienceData, critique: VerificationR
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  return cleanAndParseJSON(response.text);
 };
 
 // --- Long Horizon / Drift Detection ---
@@ -505,7 +518,7 @@ export const detectPreferenceDrift = async (currentProfile: UserProfile, history
         }
     });
 
-    return JSON.parse(response.text || '{}');
+    return cleanAndParseJSON(response.text);
 }
 
 // --- Studio Tools ---
@@ -549,7 +562,7 @@ export const mutateDesign = async (profile: UserProfile, currentDesign: DesignSy
         }
     });
 
-    return JSON.parse(response.text || '{}');
+    return cleanAndParseJSON(response.text);
 };
 
 export const polishCopy = async (text: string, tone: string): Promise<string> => {
