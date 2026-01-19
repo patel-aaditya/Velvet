@@ -1,8 +1,28 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { UserProfile, ExperienceData, Blueprint, VerificationResult, PersonalityType, DesignSystem, MemoryEvent, PreferenceDrift } from '../types';
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+const STORAGE_KEY = 'velvet_api_key';
+
+// Priority: 1. Build-time Env Var, 2. Local Storage (Runtime override), 3. Empty string
+let apiKey = process.env.API_KEY || localStorage.getItem(STORAGE_KEY) || '';
+let ai = new GoogleGenAI({ apiKey });
+
+export const updateApiKey = (key: string) => {
+  if (!key) return;
+  apiKey = key;
+  localStorage.setItem(STORAGE_KEY, key);
+  ai = new GoogleGenAI({ apiKey });
+};
+
+export const hasApiKey = () => !!apiKey && apiKey.length > 0;
+
+export const clearLocalKey = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    // Only clear memory variable if it wasn't from env
+    if (!process.env.API_KEY) {
+        apiKey = '';
+    }
+}
 
 // --- Helper: Clean JSON Parser ---
 const cleanAndParseJSON = (text: string | undefined): any => {
