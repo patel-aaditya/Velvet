@@ -3,31 +3,7 @@ import { UserProfile, ExperienceData, Blueprint, VerificationResult, Personality
 
 const STORAGE_KEY = 'velvet_api_key';
 
-// Helper to reliably get the key from various possible injection points
-const getEnvKey = () => {
-  // 1. Check for Base64 Encoded key (Bypasses Netlify Scanner)
-  if (typeof process !== 'undefined' && process.env && process.env.API_KEY_B64) {
-    try {
-      return atob(process.env.API_KEY_B64);
-    } catch (e) {
-      console.error("Failed to decode env key");
-    }
-  }
-  
-  // 2. Check standard process.env (Legacy/Local)
-  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-    return process.env.API_KEY;
-  }
-  
-  // 3. Check Vite standard import.meta.env
-  if (import.meta && import.meta.env && import.meta.env.VITE_API_KEY) {
-    return import.meta.env.VITE_API_KEY;
-  }
-  return '';
-};
-
-const envKey = getEnvKey();
-let apiKey = envKey || localStorage.getItem(STORAGE_KEY) || '';
+let apiKey = localStorage.getItem(STORAGE_KEY) || '';
 
 // Initialize client only if key exists, otherwise we wait for updateApiKey
 let ai = apiKey ? new GoogleGenAI({ apiKey }) : null as any;
@@ -43,10 +19,7 @@ export const hasApiKey = () => !!apiKey && apiKey.length > 0;
 
 export const clearLocalKey = () => {
     localStorage.removeItem(STORAGE_KEY);
-    // Only clear if we don't have a hardcoded env key
-    if (!envKey) {
-        apiKey = '';
-    }
+    apiKey = '';
 }
 
 // --- Helper: Clean JSON Parser ---
