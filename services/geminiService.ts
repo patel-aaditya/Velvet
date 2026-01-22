@@ -3,7 +3,7 @@ import { UserProfile, ExperienceData, Blueprint, VerificationResult, Personality
 
 const STORAGE_KEY = 'velvet_api_key';
 
-// Helper to reliably get the key from various possible injection points
+// Helper to reliably get the key from the encoded injection point
 const getEnvKey = () => {
   // 1. Check for Base64 Encoded key (Bypasses Netlify Scanner)
   if (typeof process !== 'undefined' && process.env && process.env.API_KEY_B64) {
@@ -14,12 +14,10 @@ const getEnvKey = () => {
     }
   }
   
-  // 2. Check standard process.env (Legacy/Local)
-  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-    return process.env.API_KEY;
-  }
+  // Note: We deliberately do NOT check process.env.API_KEY here to prevent 
+  // the build system from inlining the raw secret.
   
-  // 3. Check Vite standard import.meta.env
+  // 2. Check Vite standard import.meta.env (Fallback)
   if (import.meta && import.meta.env && import.meta.env.VITE_API_KEY) {
     return import.meta.env.VITE_API_KEY;
   }
