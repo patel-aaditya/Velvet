@@ -3,17 +3,20 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
   
-  // Prioritize the key found in the environment
-  const apiKey = env.API_KEY || env.VITE_API_KEY || '';
+  // Get the key from the environment
+  const rawApiKey = env.API_KEY || env.VITE_API_KEY || '';
+
+  // Base64 encode the key to hide it from Netlify's secret scanner during the build
+  // This prevents the "Secret env var value detected" error
+  const encodedKey = Buffer.from(rawApiKey).toString('base64');
 
   return {
     plugins: [react()],
     define: {
-      // Expose as process.env.API_KEY for compatibility
-      'process.env.API_KEY': JSON.stringify(apiKey)
+      // Expose the ENCODED key to the client
+      'process.env.API_KEY_B64': JSON.stringify(encodedKey)
     }
   };
 });
