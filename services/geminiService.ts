@@ -3,9 +3,24 @@ import { UserProfile, ExperienceData, Blueprint, VerificationResult, Personality
 
 const STORAGE_KEY = 'velvet_api_key';
 
-// Priority: 1. Build-time Env Var, 2. Local Storage (Runtime override), 3. Empty string
-let apiKey = process.env.API_KEY || localStorage.getItem(STORAGE_KEY) || '';
-let ai = new GoogleGenAI({ apiKey });
+// Helper to reliably get the key from various possible injection points
+const getEnvKey = () => {
+  // Check process.env (injected via Vite define)
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  // Check Vite standard import.meta.env
+  if (import.meta && import.meta.env && import.meta.env.VITE_API_KEY) {
+    return import.meta.env.VITE_API_KEY;
+  }
+  return '';
+};
+
+const envKey = getEnvKey();
+let apiKey = envKey || localStorage.getItem(STORAGE_KEY) || '';
+
+// Initialize client only if key exists, otherwise we wait for updateApiKey
+let ai = apiKey ? new GoogleGenAI({ apiKey }) : null as any;
 
 export const updateApiKey = (key: string) => {
   if (!key) return;
@@ -18,8 +33,8 @@ export const hasApiKey = () => !!apiKey && apiKey.length > 0;
 
 export const clearLocalKey = () => {
     localStorage.removeItem(STORAGE_KEY);
-    // Only clear memory variable if it wasn't from env
-    if (!process.env.API_KEY) {
+    // Only clear if we don't have a hardcoded env key
+    if (!envKey) {
         apiKey = '';
     }
 }
@@ -166,7 +181,7 @@ const driftSchema: Schema = {
 
 // 1. Calibration (Gemini 3 Pro)
 export const calibratePersona = async (bio: string, moodBoardUrl?: string): Promise<Partial<UserProfile>> => {
-  if (!apiKey) throw new Error("API Key missing");
+  if (!ai) throw new Error("API Key missing. Please check your settings.");
   
   const prompt = `
     Analyze this user input to infer their psychographic profile.
@@ -189,7 +204,7 @@ export const calibratePersona = async (bio: string, moodBoardUrl?: string): Prom
 
 // 2. Blueprint (Gemini 3 Pro) - Now Memory Aware
 export const createBlueprint = async (profile: UserProfile, history: MemoryEvent[] = []): Promise<Blueprint> => {
-  if (!apiKey) throw new Error("API Key missing");
+  if (!ai) throw new Error("API Key missing. Please check your settings.");
 
   let memoryContext = "";
   if (history.length > 0) {
@@ -227,7 +242,7 @@ export const createBlueprint = async (profile: UserProfile, history: MemoryEvent
 
 // 3. Draft (Gemini 3 Pro)
 export const generateDraft = async (profile: UserProfile, blueprint: Blueprint): Promise<ExperienceData> => {
-  if (!apiKey) throw new Error("API Key missing");
+  if (!ai) throw new Error("API Key missing. Please check your settings.");
 
   const prompt = `
     Execute this Blueprint:
@@ -266,7 +281,7 @@ export const generateDraft = async (profile: UserProfile, blueprint: Blueprint):
 
 // 4. Visual Assets (Gemini 2.5 Flash Image)
 export const generateVisualAsset = async (prompt: string, design: DesignSystem): Promise<string> => {
-  if (!apiKey) throw new Error("API Key missing");
+  if (!ai) throw new Error("API Key missing. Please check your settings.");
 
   const enhancedPrompt = `
     High quality, professional product photography or 3D render.
@@ -302,7 +317,7 @@ export const generateVisualAsset = async (prompt: string, design: DesignSystem):
 };
 
 export const generateProductAsset = async (conceptName: string, desc: string, design: DesignSystem): Promise<string> => {
-   if (!apiKey) throw new Error("API Key missing");
+   if (!ai) throw new Error("API Key missing. Please check your settings.");
 
    const enhancedPrompt = `
     Professional Industrial Design Product Photography.
@@ -338,7 +353,7 @@ export const generateProductAsset = async (conceptName: string, desc: string, de
 };
 
 export const generateProjectThumbnail = async (): Promise<string> => {
-    if (!apiKey) throw new Error("API Key missing");
+    if (!ai) throw new Error("API Key missing. Please check your settings.");
 
     const prompt = `
       Cinematic abstract 3D composition representing "Velvet", an AI Hyper-Personalization Engine.
@@ -375,7 +390,7 @@ export const generateProjectThumbnail = async (): Promise<string> => {
 
 // 5. Paint-to-Edit / Refine Visual (Gemini 2.5 Flash Image)
 export const refineVisualAsset = async (imageBase64: string, instruction: string): Promise<string> => {
-  if (!apiKey) throw new Error("API Key missing");
+  if (!ai) throw new Error("API Key missing. Please check your settings.");
 
   // Extract base64 data if it has the prefix
   const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
@@ -409,7 +424,7 @@ export const refineVisualAsset = async (imageBase64: string, instruction: string
 
 
 export const remixDraft = async (profile: UserProfile, blueprint: Blueprint, previousDraft: ExperienceData): Promise<ExperienceData> => {
-  if (!apiKey) throw new Error("API Key missing");
+  if (!ai) throw new Error("API Key missing. Please check your settings.");
 
   const prompt = `
     The user was not satisfied with the previous generation.
@@ -445,7 +460,7 @@ export const remixDraft = async (profile: UserProfile, blueprint: Blueprint, pre
 
 // Enhanced Vibe Verification
 export const verifyDraft = async (draft: ExperienceData, profile: UserProfile): Promise<VerificationResult> => {
-  if (!apiKey) throw new Error("API Key missing");
+  if (!ai) throw new Error("API Key missing. Please check your settings.");
 
   const prompt = `
     VIBE ENGINEERING AUDIT
@@ -477,7 +492,7 @@ export const verifyDraft = async (draft: ExperienceData, profile: UserProfile): 
 };
 
 export const refineDraft = async (draft: ExperienceData, critique: VerificationResult, profile: UserProfile): Promise<ExperienceData> => {
-  if (!apiKey) throw new Error("API Key missing");
+  if (!ai) throw new Error("API Key missing. Please check your settings.");
 
   const prompt = `
     AUTO-REFINE EXPERIENCE
@@ -509,7 +524,7 @@ export const refineDraft = async (draft: ExperienceData, critique: VerificationR
 // --- Long Horizon / Drift Detection ---
 
 export const detectPreferenceDrift = async (currentProfile: UserProfile, history: MemoryEvent[]): Promise<PreferenceDrift> => {
-    if (!apiKey) throw new Error("API Key missing");
+    if (!ai) throw new Error("API Key missing. Please check your settings.");
     
     // Only analyze if sufficient history
     if (history.length < 2) return { hasDrifted: false, reasoning: "Insufficient data", detectedPattern: "" };
@@ -544,7 +559,7 @@ export const detectPreferenceDrift = async (currentProfile: UserProfile, history
 // --- Studio Tools ---
 
 export const simulatePersonaChat = async (profile: UserProfile, message: string, context: ExperienceData): Promise<string> => {
-    if (!apiKey) throw new Error("API Key missing");
+    if (!ai) throw new Error("API Key missing. Please check your settings.");
     
     const prompt = `
       ROLE: You are ${profile.name}, a person with these traits: ${profile.personality}.
@@ -562,7 +577,7 @@ export const simulatePersonaChat = async (profile: UserProfile, message: string,
 };
 
 export const mutateDesign = async (profile: UserProfile, currentDesign: DesignSystem, instruction: string): Promise<DesignSystem> => {
-    if (!apiKey) throw new Error("API Key missing");
+    if (!ai) throw new Error("API Key missing. Please check your settings.");
 
     const prompt = `
       Modify this Design System based on the instruction: "${instruction}"
@@ -586,7 +601,7 @@ export const mutateDesign = async (profile: UserProfile, currentDesign: DesignSy
 };
 
 export const polishCopy = async (text: string, tone: string): Promise<string> => {
-    if (!apiKey) throw new Error("API Key missing");
+    if (!ai) throw new Error("API Key missing. Please check your settings.");
 
     const prompt = `
       Rewrite the following text to have a "${tone}" tone.
